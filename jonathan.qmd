@@ -47,7 +47,7 @@ shift_summary |> arrange(desc(avg_tip_pct)) # most generous
 
 #### Findings
 
-The Saturday dinner shift is the *busiest* shift, with the highest amount of tables and guests served. This also results in the highest amount of total tips being paid during the Saturday dinner shift. However, guests seem to be *most generous* during Friday lunch and are giving an average tip of almost 19%. So if a waitress/waiter wants to make the most money, they should pick up Saturday dinner shifts. If they are looking for a more chill shift, with high tips for comparably little work, they should go for Friday lunch shifts.
+The Saturday dinner shift is the *busiest* shift, with the highest amount of tables and guests served, which also results in the highest amount of total tips being paid during this shift. However, guests seem to be *most generous* during Friday lunch and give an average tip of almost 19%.
 
 ### Q2: What tables are most likely to give high tips? (ggplot)
 
@@ -83,4 +83,4 @@ tip_by_table_summary |> ggplot(aes(x = shift, y = group_size, fill = avg_tip)) +
 
 #### Findings
 
-Across all shifts, the party size is a strong driver for the total amount of tips. This makes sense, since larger groups often spend more money and the tips are usually given as a percentage of the total bill. The most valuable tables in this data are large parties at Thursday lunch (\$5.22) and Sunday dinner (\$5.05), along with mid-sized tables at Friday dinner (\$4.73).
+Across all shifts, the party size is a strong driver for the total amount of tips. The most valuable tables are large parties on weekend dinners, along with Thursday lunches.
