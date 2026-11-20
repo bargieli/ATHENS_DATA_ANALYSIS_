@@ -2,7 +2,9 @@
 title: "Tipping_behavior"
 full_title: "What drives tipping behavior in restaurants"
 author: "Bargieł, Izabela and Hryniewicka, Hanna and Quaste, Jonathan and Wewiór, Mikołaj"
-format: html
+format:
+  html:
+    embed-resources: true
 editor: visual
 ---
 
@@ -14,7 +16,7 @@ Tipping behavior
 
 ## Authors:
 
-- Izabela Bargieł, Warsaw University of Technology (WUT), `01187512@pw.edu.pl`
+- Izabela Bargieł, Warsaw University of Technology (WUT), `izabela.bargiel.stud@pw.edu.pl`
 
 - Hanna Hryniewicka, Warsaw University of Technology (WUT), `hanna.hryniewicka.stud@pw.edu.pl`
 
@@ -147,6 +149,37 @@ tips |>
 
 > Q4: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
 
+```{r}
+# Add columns for tip percentage of total bill (per table)
+tips <- tips |> mutate(
+  tip_pct = tip / total_bill * 100
+  )
+
+# Summarise the shifts
+shift_summary <- tips |> group_by(day, time) |> 
+  summarise(
+    tables       = n(),
+    guests       = sum(size),
+    avg_tip      = mean(tip),
+    avg_tip_pct  = mean(tip_pct),
+    total_tips   = sum(tip),
+    .groups = "drop"
+  )
+```
+
+```{r}
+# Arrange the summary to reveal the busiest shift (most tables) and the most generous shift (highest average tipping percentage)
+shift_summary |> arrange(desc(tables))      # busiest
+```
+
+```{r}
+shift_summary |> arrange(desc(avg_tip_pct)) # most generous
+```
+
+#### Findings
+
+The Saturday dinner shift is the busiest shift, with the highest amount of tables and guests served. This also results in the highest amount of total tips being paid during the Saturday dinner shift. However, guests seem to be most generous during Friday lunch and are giving an average tip of almost 19%. So if a waitress/waiter wants to make the most money, they should pick up Saturday dinner shifts. If they are looking for a more chill shift, with high tips for comparably little work, they should go for Friday lunch shifts.
+
 ### ggplot2
 
 > Q5: What is the relationship between the total bill amount and the tip amount?
@@ -170,6 +203,54 @@ tips|>
 ```
 
 > Q6: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+
+```{r}
+# Labels
+label_non_smoking = "Without smoker(s)"
+label_smoking = "With smoker(s)"
+label_combined = "All tables"
+
+# Create columns for shifts (day + time, sorted by time), group size (in size steps of 2) and a more descriptive smoking vs. non-smoking column
+table_prep <- tips |>
+  mutate(
+    shift = factor(paste(day, time),
+                   levels = c("Thur Lunch", "Thur Dinner", "Fri Lunch",
+                              "Fri Dinner", "Sat Dinner", "Sun Dinner")),
+    group_size = cut(size, breaks = c(0, 2, 4, 6), labels = c("1–2", "3–4", "5–6")),
+    smoker = factor(smoker, levels = c("No", "Yes"), labels = c(label_non_smoking, label_smoking))) 
+
+# Create a helper table combining the data regardless of smoking
+all_tables <- table_prep |> group_by(shift, group_size) |>
+  summarise(
+    tables  = n(),
+    avg_tip = mean(tip),
+    .groups = "drop"
+  ) |>
+  mutate(smoker = label_combined)
+
+# Create a helper table seperating smokers and non-smokers
+tables_by_smokers <- table_prep |> group_by(shift, group_size, smoker) |>
+  summarise(
+    tables  = n(),
+    avg_tip = mean(tip),
+    .groups = "drop"
+  )
+
+# Combine the two helper tables and present them as heatmaps for three facets (all tables combined, non-smoking tables, smoking tables)
+table_summary <- bind_rows(all_tables, tables_by_smokers) |>
+  mutate(smoker = factor(smoker,
+                         levels = c(label_combined, label_non_smoking, label_smoking))) |> ggplot(aes(x = shift, y = group_size, fill = avg_tip)) +
+  geom_tile() +
+  geom_text(aes(label = paste0("$", round(avg_tip, 2))), size = 3) +
+  scale_fill_gradient(low = "lightyellow", high = "darkgreen") +
+  facet_wrap(~ smoker, ncol = 1) +
+  labs(
+    title =
+      "Average tip per table by day, party size, and smoking or non-smoking section",
+    x = "Shift", y = "Party size", fill = "Avg tip ($)"
+  ) +
+  theme_minimal()
+```
 
 > Q7: Do tips and tip percentages differ between days of the week and between lunch and dinner?
 
