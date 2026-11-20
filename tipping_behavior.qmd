@@ -1,0 +1,108 @@
+---
+title: "Tipping_behavior"
+full_title: "What drives tipping behavior in restaurants"
+author: "Bargieł, Izabela and Hryniewicka, Hanna and Quaste, Jonathan and Wewiór, Mikołaj"
+format: html
+editor: visual
+---
+
+# What drives tipping behavior in restaurants
+
+## Setup
+
+```{r}
+#| label: setup
+library(tidyverse)
+
+tips <- read_csv("tips.csv")
+```
+
+```{r}
+glimpse(tips)
+```
+
+```{r}
+head(tips)
+```
+
+## Analysis
+
+### Q1: What are the average and median tip amounts and what proportion of customers leave a tip of at least 20%?
+
+### Q2: Which parties (f. ex. smoking women) tipped highest and which the lowest?
+
+### Q3: How do lunch and dinner compare on average bill, tip and number of parties?
+
+```{r}
+tips |>
+  mutate(
+    bill_per_person = total_bill / size,
+    tip_per_person = tip / size,
+    tip_percentage = tip / total_bill * 100,
+  ) |>
+  group_by(time) |>
+  summarise(
+    n_parties   = n(),
+    avg_bill_pp = round(mean(bill_per_person), 2),
+    avg_tip_pp  = round(mean(tip_per_person), 2),
+    avg_bill    = round(mean(total_bill), 2),
+    median_bill = round(median(total_bill), 2),
+    avg_tip     = round(mean(tip), 2),
+    median_tip  = round(median(tip), 2),
+    avg_tip_pct = round(mean(tip_percentage), 2),
+  ) |>
+  arrange(
+    case_when(
+      time == "Lunch"  ~ 1,
+      time == "Dinner" ~ 2,
+      .default = 9
+    )
+  )
+```
+
+### Q4: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
+
+### Q5: What is the relationship between the total bill amount and the tip amount?
+
+### Q6: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+
+### Q7: Do tips and tip percentages differ between days of the week and between lunch and dinner?
+
+```{r}
+tips <- tips |>
+  mutate(
+    tip_pct = tip / total_bill * 100,
+    day  = factor(day,  levels = c("Thur", "Fri", "Sat", "Sun")),
+    time = factor(time, levels = c("Lunch", "Dinner"))
+  )
+
+tips |>
+  pivot_longer(
+    cols = c(tip, tip_pct),
+    names_to = "measure",
+    values_to = "value"
+  ) |>
+  mutate(
+    measure = factor(
+      measure,
+      levels = c("tip", "tip_pct"),
+      labels = c("Tip ($)", "Tip (% of bill)")
+    )
+  ) |>
+  ggplot(
+    aes(x = day, y = value, fill = time)
+  )+
+  geom_boxplot() +
+  facet_wrap(~ measure, scales = "free_y") +
+  scale_fill_manual(values = c("darkorange", "steelblue")) +
+  labs(
+    title = "Tip and tip percentage by day and meal time",
+    subtitle = "Data: tips dataset",
+    x = "Day",
+    y = NULL,
+    fill = "Meal time"
+  ) +
+  theme_minimal()
+```
+
+### Q8: Are smokers really less predictable tippers than non-smokers?
