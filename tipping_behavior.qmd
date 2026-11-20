@@ -38,11 +38,11 @@ Tipping behavior
 
 - Q3 \[`dplyr`\]: How do lunch and dinner compare on average bill, tip and number of parties?
 
-- Q4 \[`dplyr`\]: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
+- Q4 \[`dplyr`\]: Which shift is busiest, and which is most generous?
 
 - Q5 \[`ggplot2`\]: What is the relationship between the total bill amount and the tip amount?
 
-- Q6 \[`ggplot2`\]: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+- Q6 \[`ggplot2`\]: Where should the waiter want to be?
 
 - Q7 \[`ggplot2`\]: Do tips and tip percentages differ between days of the week and between lunch and dinner?
 
@@ -98,6 +98,8 @@ tips|>
   )
 ```
 
+*findings*: On average, a party tipped about \$3.00 (median \$2.90), which is roughly 16% of the bill (median about 15.5%). About 16% of parties (39 of 244) tipped at least 20%.
+
 > Q2: Which parties (f. ex. smoking women) tipped highest and which the lowest?
 
 ```{r}
@@ -117,6 +119,8 @@ tips |>
   ) |>
   arrange(desc(mean_tip))
 ```
+
+*findings*: By dollars, male non-smokers tipped the most (\$3.11 on average) and female non-smokers the least (\$2.77), but the gaps are small. By tip percentage, female smokers tipped the highest share and male smokers the lowest (15.1% vs 12.8% of the total paid), so the ranking depends on the measure.
 
 > Q3: How do lunch and dinner compare on average bill, tip and number of parties?
 
@@ -147,7 +151,9 @@ tips |>
   )
 ```
 
-> Q4: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
+*findings*: Dinner has far more parties than lunch (176 vs 68) and higher average bills (20.80\$ vs 17.17\$) and tips (3.10\$ vs 2.73\$). The tip percentage is almost the same (about 16.0% vs 16.4%), so dinner tips are bigger because the bills are bigger, not because diners are more generous
+
+> Q4: Which shift is busiest, and which is most generous?
 
 ```{r}
 # Add columns for tip percentage of total bill (per table)
@@ -176,9 +182,7 @@ shift_summary |> arrange(desc(tables))      # busiest
 shift_summary |> arrange(desc(avg_tip_pct)) # most generous
 ```
 
-#### Findings
-
-The Saturday dinner shift is the busiest shift, with the highest amount of tables and guests served. This also results in the highest amount of total tips being paid during the Saturday dinner shift. However, guests seem to be most generous during Friday lunch and are giving an average tip of almost 19%. So if a waitress/waiter wants to make the most money, they should pick up Saturday dinner shifts. If they are looking for a more chill shift, with high tips for comparably little work, they should go for Friday lunch shifts.
+*findings*: Saturday dinner is the busiest shift (87 tables) and Sunday dinner is the most generous in dollars (\$3.26 average tip, 16.7%). Friday lunch has the highest tip percentage (18.9%), but it has only 7 tables, and Thursday dinner has just 1 table, so neither should be over-interpreted.
 
 ### ggplot2
 
@@ -202,48 +206,32 @@ tips|>
   theme_minimal()
 ```
 
-> Q6: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+*findings*: Small bills come with proportionally higher tips: parties paying less than 15\$ left about 18.3% on average (median 17.0%), compared with about 15.0% for bills of 15\$ or more, and the percentage keeps falling as the bill grows
+
+> Q6: Where should the waiter want to be?
 
 ```{r}
-# Labels
-label_non_smoking = "Without smoker(s)"
-label_smoking = "With smoker(s)"
-label_combined = "All tables"
-
-# Create columns for shifts (day + time, sorted by time), group size (in size steps of 2) and a more descriptive smoking vs. non-smoking column
-table_prep <- tips |>
+# Create columns for shifts (day + time, sorted by time) and group size (in size steps of 2)
+tip_by_table_summary <- tips |>
   mutate(
     shift = factor(paste(day, time),
                    levels = c("Thur Lunch", "Thur Dinner", "Fri Lunch",
                               "Fri Dinner", "Sat Dinner", "Sun Dinner")),
-    group_size = cut(size, breaks = c(0, 2, 4, 6), labels = c("1–2", "3–4", "5–6")),
-    smoker = factor(smoker, levels = c("No", "Yes"), labels = c(label_non_smoking, label_smoking))) 
+    group_size = cut(size, breaks = c(0, 2, 4, 6), labels = c("1–2", "3–4", "5–6")))
 
-# Create a helper table combining the data regardless of smoking
-all_tables <- table_prep |> group_by(shift, group_size) |>
-  summarise(
-    tables  = n(),
-    avg_tip = mean(tip),
-    .groups = "drop"
-  ) |>
-  mutate(smoker = label_combined)
-
-# Create a helper table seperating smokers and non-smokers
-tables_by_smokers <- table_prep |> group_by(shift, group_size, smoker) |>
+tip_by_table_summary <- tip_by_table_summary |>
+  group_by(shift, group_size) |>
   summarise(
     tables  = n(),
     avg_tip = mean(tip),
     .groups = "drop"
   )
 
-# Combine the two helper tables and present them as heatmaps for three facets (all tables combined, non-smoking tables, smoking tables)
-table_summary <- bind_rows(all_tables, tables_by_smokers) |>
-  mutate(smoker = factor(smoker,
-                         levels = c(label_combined, label_non_smoking, label_smoking))) |> ggplot(aes(x = shift, y = group_size, fill = avg_tip)) +
+# Create a heatmap (geom_tile) showing the average tip by shift party size
+tip_by_table_summary |> ggplot(aes(x = shift, y = group_size, fill = avg_tip)) +
   geom_tile() +
   geom_text(aes(label = paste0("$", round(avg_tip, 2))), size = 3) +
   scale_fill_gradient(low = "lightyellow", high = "darkgreen") +
-  facet_wrap(~ smoker, ncol = 1) +
   labs(
     title =
       "Average tip per table by day, party size, and smoking or non-smoking section",
@@ -251,6 +239,8 @@ table_summary <- bind_rows(all_tables, tables_by_smokers) |>
   ) +
   theme_minimal()
 ```
+
+*findings*: A waiter should want Sunday and large parties: Sunday has the highest average tip (3.26\$) and parties of four or more tip about 4\$ or more on average. Thursday and Friday are the weakest days (about 2.77\$ and 2.73\$). Cells with very few tables (e.g. parties of 5–6) are unreliable.
 
 > Q7: Do tips and tip percentages differ between days of the week and between lunch and dinner?
 
@@ -291,6 +281,8 @@ tips |>
   theme_minimal()
 ```
 
+*findings*: Tip amounts vary a little by day (lowest on Friday, highest on Sunday) and are lower at lunch than dinner, but tip percentages stay close to 15–17% almost everywhere. Only Friday lunch stands out (about 19%), and it is based on 7 tables
+
 > Q8: Are smokers really less predictable tippers than non-smokers?
 
 ```{r}
@@ -322,6 +314,8 @@ ggplot(tips, aes(x = percent_tip, fill = smoker)) +
   theme(legend.position = "top")
 ```
 
+*findings*: Yes, smokers are less predictable, even though their average tip percentage is the same as non-smokers’. Their tip percentages spread about twice as much (SD 8.5 vs 4.0 percentage points), and this holds even after removing the single 71% tip (6.3 vs 4.0).
+
 # Statistical Analysis
 
 ```{r}
@@ -346,3 +340,9 @@ shapiro.test(residuals(anova_model))
 ```
 
 # Conclusion
+
+Answer to the research question (audience: a restaurant manager). In this data, tipping is driven mainly by the size of the bill: tips are about 10 cents per dollar, and larger parties and busier dinner shifts produce larger tips simply because they spend more. The tip percentage is remarkably stable at around 16% across days, meal times, sex and smoking status. The one clear difference is that smokers’ tips are far less predictable, and the effect of smoking seems to depend on sex.
+
+What a manager should do: (1) put the strongest servers on high-volume shifts (Saturday and Sunday dinner) and large tables, where the dollar tips are highest; (2) raise tips by raising the average bill, for example through menu and upselling choices, rather than by trying to change customers’ generosity; and (3) not expect lunch customers to be less generous, because their tip percentage is about the same as at dinner.
+
+Limits: the data covers 244 tables from one restaurant over a few weeks, is observational (so it shows association, not cause), and has no information about the server or service quality. Some groups (Friday, Thursday dinner, parties of 5–6) are very small.
