@@ -6,7 +6,60 @@ format: html
 editor: visual
 ---
 
-# What drives tipping behavior in restaurants
+# Title and authors
+
+## Title:
+
+Tipping behavior
+
+## Authors:
+
+- Izabela Bargieł, Warsaw University of Technology (WUT), `01187512@pw.edu.pl`
+
+- Hanna Hryniewicka, Warsaw University of Technology (WUT), `hanna.hryniewicka.stud@pw.edu.pl`
+
+- Jonathan Quaste, Delft University of Technical (TU Delft), `j.n.quast@student.tudelft.nl`
+
+- Mikołaj Wewiór, Warsaw University of Technology (WUT), `mikolaj.wewior.stud@pw.edu.pl`
+
+# Research question
+
+## Main question:
+
+> What drives tipping behavior in restaurants
+
+## Subquestions:
+
+- Q1 \[`dplyr`\]: What are the average and median tip amounts and what proportion of customers leave a tip of at least 20%?
+
+- Q2 \[`dplyr`\]: Which parties (f. ex. smoking women) tipped highest and which the lowest?
+
+- Q3 \[`dplyr`\]: How do lunch and dinner compare on average bill, tip and number of parties?
+
+- Q4 \[`dplyr`\]: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
+
+- Q5 \[`ggplot2`\]: What is the relationship between the total bill amount and the tip amount?
+
+- Q6 \[`ggplot2`\]: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+
+- Q7 \[`ggplot2`\]: Do tips and tip percentages differ between days of the week and between lunch and dinner?
+
+- Q8 \[`ggplot2`\]: Are smokers really less predictable tippers than non-smokers?
+
+# Dataset
+
+The dataset that we use is a `tips` dataset. It is available on kaggle.com (<https://www.kaggle.com/datasets/saurabhbadole/restaurant-tips-dataset>).
+
+| feature           | short description                      |
+|:------------------|:---------------------------------------|
+| number of rows    | $244$                                  |
+| number of columns | $7$                                    |
+| key variables     | `total_bill`, `tip`                    |
+| other variables   | `sex`, `smoker`, `day`, `time`, `size` |
+| missing values    | None                                   |
+| cleaning          | None                                   |
+
+# Analysis
 
 ## Setup
 
@@ -25,13 +78,45 @@ glimpse(tips)
 head(tips)
 ```
 
-## Analysis
+### dplyr
 
-### Q1: What are the average and median tip amounts and what proportion of customers leave a tip of at least 20%?
+> Q1: What are the average and median tip amounts and what proportion of customers leave a tip of at least 20%?
 
-### Q2: Which parties (f. ex. smoking women) tipped highest and which the lowest?
+```{r}
+tips<-tips |> 
+  mutate(percentage=round(100*tip/total_bill))
 
-### Q3: How do lunch and dinner compare on average bill, tip and number of parties?
+tips|> 
+  summarize(
+    mean_tip                = round(mean(tip),2),
+    median_tip              = round(median(tip),2),
+    mean_tip_percentage     = round(mean(percentage)),
+    median_tip_percentage   = round(median(percentage)),
+    pctg_of_tips_above_20p  = round(100 * sum(percentage > 20) / n())
+  )
+```
+
+> Q2: Which parties (f. ex. smoking women) tipped highest and which the lowest?
+
+```{r}
+tips <- tips |>
+  mutate(percent_tip = tip / (tip + total_bill) * 100) 
+
+tips |>
+  group_by(sex, smoker) |>
+  summarise(
+    n              = n(),
+    mean_tip       = round(mean(tip), 2),
+    median_tip     = round(median(tip), 2),
+    mean_tip_pct   = round(mean(percent_tip), 2),
+    median_tip_pct = round(median(percent_tip), 2),
+    sd_tip_pct     = round(sd(percent_tip), 2),
+    .groups        = "drop"
+  ) |>
+  arrange(desc(mean_tip))
+```
+
+> Q3: How do lunch and dinner compare on average bill, tip and number of parties?
 
 ```{r}
 tips |>
@@ -60,13 +145,33 @@ tips |>
   )
 ```
 
-### Q4: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
+> Q4: For each shift (day × time), how many tables were served, and what was the average tip and tip %? Which shift is busiest, and which is most generous?
 
-### Q5: What is the relationship between the total bill amount and the tip amount?
+### ggplot2
 
-### Q6: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+> Q5: What is the relationship between the total bill amount and the tip amount?
 
-### Q7: Do tips and tip percentages differ between days of the week and between lunch and dinner?
+```{r}
+tips|> 
+  ggplot(
+    aes(x=total_bill,y=percentage)
+  )+
+  geom_point(
+    aes(color=factor(sex)),  alpha=0.5
+  )+
+  geom_smooth()+
+  labs(
+    title = "Tip percentage as a function of the total bill",
+    x = "Total bill [USD]",
+    y = "Tip percentage [%]",
+    color = "Sex"
+  )+
+  theme_minimal()
+```
+
+> Q6: Where should the waiter want to be? Heatmap (geom_tile) of average tip by day × size, or a bar chart of average tip by day, filled by smoker?
+
+> Q7: Do tips and tip percentages differ between days of the week and between lunch and dinner?
 
 ```{r}
 tips <- tips |>
@@ -105,4 +210,58 @@ tips |>
   theme_minimal()
 ```
 
-### Q8: Are smokers really less predictable tippers than non-smokers?
+> Q8: Are smokers really less predictable tippers than non-smokers?
+
+```{r}
+group_medians <- tips |>
+  group_by(sex, smoker) |>
+  summarise(med_pct = median(percent_tip), .groups = "drop")
+
+ggplot(tips, aes(x = percent_tip, fill = smoker)) +
+  geom_density(alpha = 0.45) +
+  geom_vline(
+    data = group_medians,
+    aes(xintercept = med_pct, color = smoker),
+    linetype = "dashed",
+    linewidth = 0.9
+  ) +
+  facet_wrap(~ sex) +
+  # for x axis
+  coord_cartesian(xlim = c(0, 45)) +
+  scale_fill_manual(values = c("No" = "darkorange", "Yes" = "steelblue")) +
+  scale_color_manual(values = c("No" = "darkorange", "Yes" = "steelblue")) +
+  labs(
+    title    = "Male group is more coherent than the female group",
+    x        = "Tip Percentage (%)",
+    y        = "Density",
+    fill     = "Smoker",
+    color    = "Smoker",
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+```
+
+# Statistical Analysis
+
+```{r}
+library(car) 
+
+# 1. Levene test - to check the variance equality
+# Ho - equal variances
+# H1 - different variances
+leveneTest(percent_tip ~ smoker, data = tips)
+# p < 0.05 -> NOT EQUAL!
+
+# 2. Two-way ANOVA (check sex, smoker and mix significance)
+anova_model <- aov(percent_tip ~ sex * smoker, data = tips)
+summary(anova_model)
+# sex:smoker Pr = 0.26 -> smoking effects women and man in a different way
+
+
+# 3. Shapiro-Wilk test - checking the distribution of anova
+shapiro.test(residuals(anova_model))
+# tiny p-valy - it does not have a normal distribution
+
+```
+
+# Conclusion
