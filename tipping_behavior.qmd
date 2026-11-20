@@ -1,7 +1,7 @@
 ---
 title: "Tipping_behavior"
 full_title: "What drives tipping behavior in restaurants"
-author: "Bargieł, Izabela and Hryniewicka, Hanna and Quaste, Jonathan and Wewiór, Mikołaj"
+author: "Bargieł Izabela and Hryniewicka Hanna and Quast Jonathan and Wewiór Mikołaj"
 format:
   html:
     embed-resources: true
@@ -20,7 +20,7 @@ Tipping behavior
 
 - Hanna Hryniewicka, Warsaw University of Technology (WUT), `hanna.hryniewicka.stud@pw.edu.pl`
 
-- Jonathan Quaste, Delft University of Technical (TU Delft), `j.n.quast@student.tudelft.nl`
+- Jonathan Quast, Delft University of Technical (TU Delft), `j.n.quast@student.tudelft.nl`
 
 - Mikołaj Wewiór, Warsaw University of Technology (WUT), `mikolaj.wewior.stud@pw.edu.pl`
 
