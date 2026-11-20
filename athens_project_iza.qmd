@@ -1,0 +1,107 @@
+---
+title: "Athens: Applied Statistics with R (project)"
+author: "Iza"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+## Setup
+
+```{r}
+#| label: setup
+library(tidyverse)
+
+tips <- read_csv("tips.csv")
+```
+
+## Wrangling data with dplyr
+
+### Look first: glimpse()
+
+```{r}
+glimpse(tips)
+```
+
+### mutate()
+
+```{r}
+tips <- tips |>
+  mutate(percent_tip = tip / (tip + total_bill) * 100) 
+```
+
+### Which parties (f. ex. smoking women) tipped highest and which the lowest?
+
+```{r}
+tips |>
+  group_by(sex, smoker) |>
+  summarise(
+    n              = n(),
+    mean_tip       = round(mean(tip), 2),
+    median_tip     = round(median(tip), 2),
+    mean_tip_pct   = round(mean(percent_tip), 2),
+    median_tip_pct = round(median(percent_tip), 2),
+    sd_tip_pct     = round(sd(percent_tip), 2),
+    .groups        = "drop"
+  ) |>
+  arrange(desc(mean_tip))
+```
+
+### plot
+
+```{r}
+group_medians <- tips |>
+  group_by(sex, smoker) |>
+  summarise(med_pct = median(percent_tip), .groups = "drop")
+
+ggplot(tips, aes(x = percent_tip, fill = smoker)) +
+  geom_density(alpha = 0.45) +
+  geom_vline(
+    data = group_medians,
+    aes(xintercept = med_pct, color = smoker),
+    linetype = "dashed",
+    linewidth = 0.9
+  ) +
+  facet_wrap(~ sex) +
+  # for x axis
+  coord_cartesian(xlim = c(0, 45)) +
+  scale_fill_manual(values = c("No" = "#1B4F72", "Yes" = "#E67E22")) +
+  scale_color_manual(values = c("No" = "#1B4F72", "Yes" = "#E67E22")) +
+  labs(
+    title    = "Male group is more coherent than the female group",
+    x        = "Tip Percentage (%)",
+    y        = "Density",
+    fill     = "Smoker",
+    color    = "Smoker",
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+```
+
+Statistics
+
+```{r}
+library(car) 
+
+# 1. Levene test - to check the variance equality
+# Ho - equal variances
+# H1 - different variances
+leveneTest(percent_tip ~ smoker, data = tips)
+# p < 0.05 -> NOT EQUAL!
+
+# 2. Two-way ANOVA (check sex, smoker and mix significance)
+anova_model <- aov(percent_tip ~ sex * smoker, data = tips)
+summary(anova_model)
+# sex:smoker Pr = 0.26 -> smoking effects women and man in a different way
+
+
+# 3. Shapiro-Wilk test - checking the distribution of anova
+shapiro.test(residuals(anova_model))
+# tiny p-valy - it does not have a normal distribution
+```
