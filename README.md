@@ -17,6 +17,6 @@ RQ: What drives restaurant tipping behavior — do customer demographics (sex, s
 
 7.  Box plots over the day-time of total bill / tip / tip-rate (Mikołaj)
 
-8.  plot (facet_wrap / facet_grid / density plot)
+8.  Are smokers really less predictable tippers than non-smokers? Density plot of tip % filled by smoking status, faceted by sex (Iza)
 
 9.  statistial analysis
